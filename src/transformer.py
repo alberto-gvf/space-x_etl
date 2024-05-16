@@ -3,7 +3,10 @@
 # Write parquet files for each table
 import json
 import gc
-from utils import PATH_RESOURCES_RAW, PATH_RESOURCES_STAGE
+try:
+    from utils import PATH_RESOURCES_RAW, PATH_RESOURCES_STAGE
+except ImportError:
+    from src.utils import PATH_RESOURCES_RAW, PATH_RESOURCES_STAGE
 import pandas as pd
 
 
