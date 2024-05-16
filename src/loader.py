@@ -8,6 +8,9 @@ import uuid
 
 
 def get_db_engine():
+    """
+    Gets Postgres DB engine
+    """
     db_name = 'postgres'
     db_user = 'postgres'
     db_password = 'postgres'
@@ -19,25 +22,61 @@ def get_db_engine():
 
 
 def read_parquet_table(table, date_from, date_to):
-    filter = [('p_creation_date', '>=', date_from), ('p_creation_date', '<', date_to)]
-    pdf = pd.read_parquet(f"{PATH_RESOURCES_STAGE}/{table}", filters=filter)
-    return pdf
+    """
+    Read parquet table with time constraints
+    :param table: table to be read
+    :param date_from: time boundary for the query in YYYY-MM-DD format
+    :param date_to: time boundary for the query in YYYY-MM-DD format
+    :return: pandas dataframe with result of reading
+    """
+    try:
+        filter = [('p_creation_date', '>=', date_from), ('p_creation_date', '<', date_to)]
+        pdf = pd.read_parquet(f"{PATH_RESOURCES_STAGE}/{table}", filters=filter)
+        return pdf
+    except FileNotFoundError:
+        print(f"Error: Parquet table '{table}' not found.")
+        return None
+    except Exception as e:
+        print("Error:", e)
+        return None
 
 
 def get_insert_sql(table_name):
-    with open(f'{PATH_SQL}/insert_{table_name}.sql', 'r') as sql_file:
-        return sql_file.read()
+    """
+    Reads SQL file with insert.
+    :param table_name: table name that will be inserted.
+    :return: insert query
+    """
+    try:
+        with open(f'{PATH_SQL}/insert_{table_name}.sql', 'r') as sql_file:
+            return sql_file.read()
+    except FileNotFoundError:
+        print(f"Error: SQL file for table '{table_name}' not found.")
+        return None
+    except Exception as e:
+        print("Error:", e)
+        return None
 
 
 def load_table(table_name, date_from, date_to):
-    table_pdf = read_parquet_table(table_name, date_from, date_to)
-    engine = get_db_engine()
-    temp_table_name = f'{table_name}_{uuid.uuid4().hex[:8]}'
-    table_pdf.to_sql(temp_table_name, engine, if_exists='replace', index=False)
-    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
-        connection.execute(text(get_insert_sql(table_name).format(temp_table_name=temp_table_name)))
-        print(f"Data inserted successfully in {table_name}")
-        connection.execute(text(f"DROP TABLE IF EXISTS {temp_table_name}"))
+    """
+    Reads data from a parquet table and loads it into the postgres db
+    :param table_name: table name to read and load
+    :param date_from: time boundary for the query in YYYY-MM-DD format
+    :param date_to: time boundary for the query in YYYY-MM-DD format
+    :return:
+    """
+    try:
+        table_pdf = read_parquet_table(table_name, date_from, date_to)
+        engine = get_db_engine()
+        temp_table_name = f'{table_name}_{uuid.uuid4().hex[:8]}'
+        table_pdf.to_sql(temp_table_name, engine, if_exists='replace', index=False)
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+            connection.execute(text(get_insert_sql(table_name).format(temp_table_name=temp_table_name)))
+            print(f"Data inserted successfully in {table_name}")
+            connection.execute(text(f"DROP TABLE IF EXISTS {temp_table_name}"))
+    except Exception as e:
+        print(f"Error when running load_table for {table_name}:", e)
 
 
 def main():

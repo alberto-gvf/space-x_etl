@@ -23,6 +23,11 @@ LAUNCHES_COLUMNS = [
 
 
 def read_json(path):
+    """
+    Reads json file from path
+    :param path: Full Path where json is located
+    :return: dictionary with content of the json file
+    """
     try:
         with open(path, 'r') as file:
             data = json.load(file)
@@ -36,17 +41,33 @@ def read_json(path):
 
 
 def add_date_partition_column(pdf):
+    """
+    Adds partition column p_creation_date using date_utc
+    :param pdf: pandas dataframe
+    :return: pandas dataframe with partition column
+    """
     pdf['date_utc'] = pd.to_datetime(pdf['date_utc'])
     pdf['p_creation_date'] = pdf['date_utc'].dt.date
     return pdf
 
 
 def save_parquet(pdf, path):
+    """
+    Saves pandas dataframe to a parquet table. Dataframe needs to have p_creation_date column.
+    Garbage collector is needed, otherwise performance of this method is extreamly bad.
+    :param pdf: pandas dataframe to save to parquet.
+    :param path: path where the data will be stored
+    """
     pdf.to_parquet(path, partition_cols=["p_creation_date"], existing_data_behavior='delete_matching')
-    gc.collect() # needed otherwise it'll hang after writing
+    gc.collect()  # needed otherwise it'll hang after writing
 
 
 def get_cores(data):
+    """
+    Extract cores data from raw data
+    :param data: raw data.
+    :return: Pandas dataframe with cores information
+    """
     cores = []
     for datapoint in data:
         for core in datapoint.get("cores"):
@@ -64,6 +85,11 @@ def get_cores(data):
 
 
 def get_launches(data):
+    """
+    Extract launches data from raw data
+    :param data: raw data.
+    :return: Pandas dataframe with launches information
+    """
     launches_pdf = pd.DataFrame(data)
     launches_pdf = (
         launches_pdf[launches_pdf["id"].notnull()]
