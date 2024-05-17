@@ -1,0 +1,38 @@
+version: '3'
+
+services:
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+  notebook:
+    build: .
+    volumes:
+      - ./notebooks:/notebooks
+    command:
+      - "jupyter"
+      - "notebook"
+      - "--ip='0.0.0.0'"
+      - "--port=80"
+      - "--no-browser"
+      - "--allow-root"
+      - "--NotebookApp.token=''"
+    ports:
+      - "80:80"
+    depends_on:
+      - db
+  airflow:
+    image: apache/airflow:latest
+    environment:
+      AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: True
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow:/opt/airflow
+      - ./src:/src
+      - ./resources:/resources
+    command: airflow standalone
